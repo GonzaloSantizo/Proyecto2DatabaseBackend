@@ -8,6 +8,10 @@ app.get("/", (req, res) => {
   res.send("Hello, TypeScript with Express!");
 });
 
+app.get("/users", (req, res) => {
+  res.send("List of users");
+});
+
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
