@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import db from "../../Config/db";
 
-
 export async function getProducts(req: Request, res: Response) {
     try {
         const session = db.session();
@@ -9,7 +8,7 @@ export async function getProducts(req: Request, res: Response) {
         const products = await session.run(
             `
             MATCH (w:Warehouse)-[r:STORES]-(p:Product) 
-            WHERE w.name = $warehouseName
+            WHERE w.name = "Warehouse X" 
             RETURN p, r.quantity as quantity, w.name as warehouse
             `
         );
