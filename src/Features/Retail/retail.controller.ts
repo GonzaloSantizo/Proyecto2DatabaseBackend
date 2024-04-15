@@ -33,17 +33,8 @@ export async function getProducts(req: Request, res: Response) {
 export async function placeOrder(req: Request, res: Response) {
     try {
         const session = db.session();
-        // const { retailerId, warehouseId, products } = req.body;
+        const { retailerId, warehouseId, products } = req.body;
 
-        // mock data
-        const retailerId = "a1b91205-48f3-47af-8e9a-713e7fb734a7";
-        const warehouseId = "91b11e9b-239d-49c4-aa23-ef01d4961984";
-        const products = [
-            { id: "9ed22c44-9bf1-4cc3-aaee-37faef9cc6fb", quantity: 2 },
-            { id: "cd8e999c-38a0-455b-92a6-7e036f1aaddc", quantity: 1 }
-        ];
-
-        // Calculate total price
         let totalPrice = 0;
         for (const product of products) {
             const productRecord = await session.run(
@@ -95,12 +86,16 @@ export async function placeOrder(req: Request, res: Response) {
 export async function getOrders(req: Request, res: Response) {
     try {
         const session = db.session();
+        const retailerId = req.params.retailerId;
+
         const orders = await session.run(
             `
-            MATCH (r:Retailer)-[p:PLACES]-(o:Order)-[:FULFILLED_BY]-(w:Warehouse)
-            return o.id as id, o.status as status, p.order_date as placed_at, 
+            MATCH (r:Retailer {id: $retailerId})-[p:PLACES]-(o:Order)-[:FULFILLED_BY]-(w:Warehouse)
+            RETURN o.id as id, o.status as status, 
+            apoc.date.format(p.order_date.epochMillis, 'ms', 'yyyy-MM-dd HH:mm:ss') as placed_at, 
             o.total as total, w.name as warehouse
-        `
+        `,
+            { retailerId }
         );
 
         const formattedOrders = orders.records.map(record => {
@@ -114,6 +109,89 @@ export async function getOrders(req: Request, res: Response) {
         });
 
         res.json(formattedOrders);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send();
+    }
+}
+
+export async function getOrderById(req: Request, res: Response) {
+    try {
+        const session = db.session();
+        const orderId = req.params.orderId;
+
+        const result = await session.run(
+            `
+            MATCH (o:Order {id: $orderId})
+            OPTIONAL MATCH (o)-[:CONTAINS]-(p:Product)
+            OPTIONAL MATCH (o)-[:SHIPPED_VIA]->(s:Shipment)
+            RETURN o.id as id, o.status as status, o.total as total, p, p.quantity as quantity,
+                   s.shipment_id as shipmentId, apoc.date.format(s.date.epochMillis, 'ms', 'yyyy-MM-dd') as shipmentDate, s.tracking_number as trackingNumber
+            `,
+            { orderId }
+        );
+
+        if (result.records.length === 0) {
+            res.status(404).json({ error: "Order not found" });
+            return;
+        }
+
+        const formattedOrder = {
+            id: result.records[0].get("id"),
+            status: result.records[0].get("status"),
+            total: result.records[0].get("total"),
+            products: result.records.map(record => {
+                return {
+                    product: { ...record.get("p").properties },
+                    quantity: record.get("quantity")
+                };
+            }),
+            shipment: result.records[0].get("shipmentId")
+                ? {
+                      id: result.records[0].get("shipmentId"),
+                      shippedAt: result.records[0].get("shipmentDate"),
+                      trackingNumber: result.records[0].get("trackingNumber"),
+                      status: result.records[0].get("status")
+                  }
+                : null
+        };
+
+        res.json(formattedOrder);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send();
+    }
+}
+
+export async function receiveOrder(req: Request, res: Response) {
+    try {
+        const session = db.session();
+        const orderId = req.params.orderId;
+
+        const result = await session.run(
+            `
+        MATCH (o:Order {id: $orderId})-[:SHIPPED_VIA]->(s:Shipment)
+        SET o.status = 'RECEIVED', s.status = 'DELIVERED'
+        RETURN o.id as orderId, o.status as orderStatus, s.shipment_id as shipmentId, s.status as shipmentStatus
+        `,
+            { orderId }
+        );
+
+        if (result.records.length === 0) {
+            res.status(404).json({ error: "Order or shipment not found" });
+            return;
+        }
+
+        const updatedOrder = {
+            id: result.records[0].get("orderId"),
+            status: result.records[0].get("orderStatus"),
+            shipment: {
+                id: result.records[0].get("shipmentId"),
+                status: result.records[0].get("shipmentStatus")
+            }
+        };
+
+        res.json(updatedOrder);
     } catch (error) {
         console.error(error);
         res.status(500).send();

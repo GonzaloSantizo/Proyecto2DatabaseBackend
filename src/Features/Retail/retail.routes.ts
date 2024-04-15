@@ -6,16 +6,12 @@ const router = Router();
 
 router.get("/products", RetailController.getProducts);
 
-router.get("/orders", RetailController.getOrders);
+router.get("/:retailerId/orders/:orderId", RetailController.getOrderById);
+
+router.get("/:retailerId/orders", RetailController.getOrders);
 
 router.post("/orders", RetailController.placeOrder);
 
-router.get("orders/:id", (req, res) => {
-    res.send("View order");
-});
-
-router.put("orders/:id", (req, res) => {
-    res.send("Update order"); // can be used to tell the warehouse the order has been received, or to cancel the order
-});
+router.patch("/orders/:orderId/receive", RetailController.receiveOrder);
 
 export default router;
