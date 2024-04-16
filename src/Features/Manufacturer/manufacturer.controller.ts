@@ -54,3 +54,26 @@ export async function createProduct(req: Request, res: Response) {
         res.status(500).send();
     }
 }
+
+export async function updateProductSku(req: Request, res: Response) {
+    try {
+        const session = db.session();
+        const { id, newSku } = req.body;
+
+        const result = await session.run(
+            `
+            MATCH (p:Product {id: $id})
+            SET p.sku = $newSku
+            RETURN p
+            `,
+            { id, newSku }
+        );
+
+        const updatedProduct = result.records[0].get("p").properties;
+
+        res.json(updatedProduct);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send();
+    }
+}
