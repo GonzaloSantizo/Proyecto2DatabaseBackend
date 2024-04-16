@@ -1,28 +1,85 @@
 import { Request, Response } from "express";
 import db from "../../Config/db";
 
-export async function getProducts(req: Request, res: Response) {
+export async function getRetailers(req: Request, res: Response) {
     try {
         const session = db.session();
 
-        const products = await session.run(
+        const retailers = await session.run(
             `
-            MATCH (w:Warehouse)-[r:STORES]-(p:Product) 
-            return p, r.quantity as quantity, w.name as warehouse
-            LIMIT 25
+            MATCH (r:Retailer) 
+            RETURN r
             `
         );
 
-        const formattedProducts = products.records.map(record => {
-            return {
-                ...record.get("p").properties,
-                quantity: record.get("quantity"),
-                warehouse: record.get("warehouse")
-            };
+        const formattedRetailers = retailers.records.map(record => {
+            return record.get("r").properties;
         });
 
-        console.log(formattedProducts);
+        console.log(formattedRetailers);
 
+        res.json(formattedRetailers);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send();
+    }
+}
+
+export async function getProducts(req: Request, res: Response) {
+    try {
+        const session = db.session();
+        const warehouseId = req.query.warehouseId as string;
+
+        let products;
+
+        if (warehouseId) {
+            products = await session.run(
+                `
+          MATCH (w:Warehouse {id: $warehouseId})-[r:STORES]-(p:Product)
+          RETURN p, r.quantity as quantity, w.name as warehouse
+          `,
+                { warehouseId }
+            );
+        } else {
+            products = await session.run(
+                `
+          MATCH (w:Warehouse)-[r:STORES]-(p:Product)
+          RETURN p, r.quantity as quantity, w.name as warehouse
+          LIMIT 25
+          `
+            );
+        }
+
+        const formattedProducts = products.records.reduce(
+            (acc: any, record) => {
+                const productId = record.get("p").properties.id;
+                const existingProduct = acc.find(
+                    product => product.id === productId
+                );
+
+                if (existingProduct) {
+                    existingProduct.warehouses.push({
+                        name: record.get("warehouse"),
+                        quantity: record.get("quantity")
+                    });
+                } else {
+                    acc.push({
+                        ...record.get("p").properties,
+                        warehouses: [
+                            {
+                                name: record.get("warehouse"),
+                                quantity: record.get("quantity")
+                            }
+                        ]
+                    });
+                }
+
+                return acc;
+            },
+            []
+        );
+
+        console.log(formattedProducts);
         res.json(formattedProducts);
     } catch (error) {
         console.error(error);

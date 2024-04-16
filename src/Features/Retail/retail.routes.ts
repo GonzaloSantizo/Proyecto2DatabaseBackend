@@ -4,6 +4,8 @@ import * as RetailController from "./retail.controller";
 
 const router = Router();
 
+router.get("/", RetailController.getRetailers);
+
 router.get("/products", RetailController.getProducts);
 
 router.get("/products/:productId", RetailController.getProductById);
