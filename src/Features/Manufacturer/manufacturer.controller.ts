@@ -7,9 +7,8 @@ export async function getProducts(req: Request, res: Response) {
 
         const products = await session.run(
             `
-            MATCH (w:Warehouse)-[r:STORES]-(p:Product) 
-            WHERE w.name = "Warehouse X" 
-            RETURN p, r.quantity as quantity, w.name as warehouse
+            MATCH (manufacturer:Manufacturer {id: "id_rarebeauty"})-[:PRODUCES]->(product)
+            RETURN product
             `
         );
 
