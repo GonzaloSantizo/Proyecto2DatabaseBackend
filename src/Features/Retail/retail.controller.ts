@@ -15,7 +15,7 @@ export async function getProducts(req: Request, res: Response) {
 
         const formattedProducts = products.records.map(record => {
             return {
-                product: { ...record.get("p").properties },
+                ...record.get("p").properties,
                 quantity: record.get("quantity"),
                 warehouse: record.get("warehouse")
             };
@@ -30,53 +30,130 @@ export async function getProducts(req: Request, res: Response) {
     }
 }
 
+export async function getProductById(req: Request, res: Response) {
+    try {
+        const session = db.session();
+        const productId = req.params.productId;
+
+        const product = await session.run(
+            `
+        MATCH (p:Product {id: $productId})<-[:STORES]-(w:Warehouse)
+        RETURN p, w, toFloat(w.capacity) as capacity
+        `,
+            { productId }
+        );
+
+        if (product.records.length === 0) {
+            res.status(404).json({ error: "Product not found" });
+            return;
+        }
+
+        const productProperties = product.records[0].get("p").properties;
+        const warehouseProperties = product.records[0].get("w").properties;
+
+        // Format the numeric values
+        const formattedProperties = {
+            ...productProperties,
+            warehouse: {
+                ...warehouseProperties
+            }
+        };
+
+        // Replace the capacity value with the formatted value
+        formattedProperties.warehouse.capacity =
+            product.records[0].get("capacity");
+
+        res.json(formattedProperties);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send();
+    }
+}
+
 export async function placeOrder(req: Request, res: Response) {
     try {
         const session = db.session();
-        const { retailerId, warehouseId, products } = req.body;
+        const { retailerId, products } = req.body;
 
-        let totalPrice = 0;
-        for (const product of products) {
-            const productRecord = await session.run(
+        const order = await session.writeTransaction(async tx => {
+            const orderResult = await tx.run(
                 `
-          MATCH (p:Product {id: $productId})
-          RETURN p.price as price
-          `,
-                { productId: product.id }
-            );
-            totalPrice +=
-                productRecord.records[0].get("price") * product.quantity;
-        }
-
-        const order = await session.run(
-            `
-        MATCH (r:Retailer {id: $retailerId})
-        MATCH (w:Warehouse {id: $warehouseId})
-        CREATE (o:Order {id: randomUUID(), status: "PENDING", createdAt: datetime(), total: $totalPrice})
-        CREATE (r)-[:PLACES  {
+          MATCH (r:Retailer {id: $retailerId})
+          CREATE (o:Order {
+            id: randomUUID(),
+            status: "PENDING",
+            createdAt: datetime(),
+            total: 0
+          })
+          CREATE (r)-[:PLACES {
             order_date: datetime(),
             payment_method: "CREDIT_CARD",
             payment_status: "PAID"
-        }]->(o)
-        CREATE (o)-[:FULFILLED_BY {
-            status: "PENDING",
-            assignedDate: datetime(),
-            estimatedShippingDate: datetime() + duration({days: 3})
-        }]->(w)
-        WITH o
-        UNWIND $products as product
-        MATCH (p:Product {id: product.id})
-        CREATE (o)-[:CONTAINS {
-            quantity: product.quantity, 
-            unit_price: p.price, 
-            subtotal: p.price * product.quantity
-        }]->(p)
-        RETURN o
-        `,
-            { retailerId, warehouseId, products, totalPrice }
-        );
+          }]->(o)
+          RETURN o
+          `,
+                { retailerId }
+            );
 
-        res.json(order.records[0].get("o").properties);
+            const orderId = orderResult.records[0].get("o").properties.id;
+            let totalPrice = 0;
+
+            for (const product of products) {
+                const warehouseId = product.warehouseId;
+                const productId = product.id;
+                const quantity = product.quantity;
+
+                const productRecord = await tx.run(
+                    `
+            MATCH (p:Product {id: $productId})
+            RETURN p.price as price
+            `,
+                    { productId }
+                );
+
+                const unitPrice = productRecord.records[0].get("price");
+                const subtotal = unitPrice * quantity;
+                totalPrice += subtotal;
+
+                await tx.run(
+                    `
+            MATCH (o:Order {id: $orderId})
+            MATCH (w:Warehouse {id: $warehouseId})
+            MATCH (p:Product {id: $productId})
+            CREATE (o)-[:FULFILLED_BY {
+              status: "PENDING",
+              assignedDate: datetime(),
+              estimatedShippingDate: datetime() + duration({days: 3})
+            }]->(w)
+            CREATE (o)-[:CONTAINS {
+              quantity: $quantity,
+              unit_price: $unitPrice,
+              subtotal: $subtotal
+            }]->(p)
+            `,
+                    {
+                        orderId,
+                        warehouseId,
+                        productId,
+                        quantity,
+                        unitPrice,
+                        subtotal
+                    }
+                );
+            }
+
+            await tx.run(
+                `
+          MATCH (o:Order {id: $orderId})
+          SET o.total = $totalPrice
+          `,
+                { orderId, totalPrice }
+            );
+
+            return orderId;
+        });
+
+        res.json({ orderId: order });
     } catch (error) {
         console.error(error);
         res.status(500).send();
