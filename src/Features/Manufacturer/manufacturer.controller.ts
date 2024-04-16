@@ -76,3 +76,30 @@ export async function updateProductSku(req: Request, res: Response) {
         res.status(500).send();
     }
 }
+
+export async function getSupplier(req: Request, res: Response) {
+    try {
+        const session = db.session();
+        const { manufacturerId } = req.params;
+
+        const result = await session.run(
+            `
+            MATCH (manufacturer:Manufacturer)<-[:SUPPLIES]-(supplier:Supplier)
+            WHERE manufacturer.id = $manufacturerId
+            RETURN supplier
+            `,
+            { manufacturerId }
+        );
+
+        const formattedResult = result.records.map(record => {
+            return record.get("supplier").properties;
+        });
+
+        console.log(formattedResult);
+
+        res.json(formattedResult);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send();
+    }
+}

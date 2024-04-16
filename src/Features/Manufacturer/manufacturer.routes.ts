@@ -4,5 +4,6 @@ const router = Router();
 
 router.get("/products", ManufacturerController.getProducts); // different from the products a retail business would see
 router.post("/products", ManufacturerController.createProduct); //create product
+router.get("/manufacturer/:manufacturerId/supplier", ManufacturerController.getSupplier);
 
 export default router;
