@@ -31,31 +31,6 @@ export async function getProducts(req: Request, res: Response) {
     }
 }
 
-export async function createProduct(req: Request, res: Response) {
-    try {
-        const session = db.session();
-
-        const { name, sku, price, description } = req.body;
-
-        const result = await session.run(
-            `
-            CREATE (p:Product { name: $name, sku: $sku, price: $price, description: $description }) 
-            RETURN p
-            `,
-            { name, sku, price, description }
-        );
-
-        const createdProduct = result.records[0].get("p").properties;
-
-        console.log(createdProduct);
-
-        res.json(createdProduct);
-    } catch (error) {
-        console.error(error);
-        res.status(500).send();
-    }
-}
-
 export async function updateProductSku(req: Request, res: Response) {
     try {
         const session = db.session();
