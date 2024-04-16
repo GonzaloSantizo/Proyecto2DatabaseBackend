@@ -6,10 +6,16 @@ import warehouse from "./Features/Warehouse/warehouse.routes";
 import manufacturer from "./Features/Manufacturer/manufacturer.routes";
 const app = express();
 
-const port = 3000;
+const port = 4000;
 
 app.get("/", (req, res) => {
     res.send("Hello, TypeScript with Express!");
+});
+
+// allow cors from all origins
+app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    next();
 });
 
 app.use("/retail", retail);
