@@ -1,6 +1,29 @@
 import { Request, Response } from "express";
 import db from "../../Config/db";
 
+export async function getWarehouses(req: Request, res: Response) {
+    try {
+        const session = db.session();
+
+        const warehouses = await session.run(
+            `
+            MATCH (w:Warehouse) 
+            RETURN w
+            `
+        );
+
+        const formattedWarehouses = warehouses.records.map(record => {
+            return record.get("w").properties;
+        });
+
+        console.log(formattedWarehouses);
+
+        res.json(formattedWarehouses);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send();
+    }
+}
 
 export async function getProducts(req: Request, res: Response) {
     try {
@@ -81,7 +104,6 @@ export async function updateProductSku(req: Request, res: Response) {
         res.status(500).send();
     }
 }
-
 
 export async function deleteProduct(req: Request, res: Response) {
     try {
