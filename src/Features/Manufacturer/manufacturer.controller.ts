@@ -29,3 +29,28 @@ export async function getProducts(req: Request, res: Response) {
         res.status(500).send();
     }
 }
+
+export async function createProduct(req: Request, res: Response) {
+    try {
+        const session = db.session();
+        const { id, name, price, sku, manufacturer } = req.body;
+
+        const result = await session.run(
+            `
+            CREATE (p:Product {id: $id, name: $name, price: $price, sku: $sku})
+            WITH p
+            MATCH (m:Manufacturer {name: $manufacturer})
+            CREATE (m)-[:MANUFACTURES]->(p)
+            RETURN p
+            `,
+            { id, name, price, sku, manufacturer }
+        );
+
+        const createdProduct = result.records[0].get("p").properties;
+
+        res.json(createdProduct);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send();
+    }
+}
