@@ -108,6 +108,8 @@ export async function getProductById(req: Request, res: Response) {
         //replace wwarehouse capacity with formatted capacity
         formattedProperties.warehouse.capacity = capacity;
 
+        formattedProperties.sku = formattedProperties.sku.toString();
+
         console.log(formattedProperties);
 
         res.json(formattedProperties);
@@ -309,6 +311,12 @@ export async function getOrderById(req: Request, res: Response) {
             shipments: result.records[0].get("shipments")
         };
 
+        /// replace each sku property from each product by converting it to a string
+        formattedOrder.products.forEach((product: any) => {
+            product.product.sku = product.product.sku.toString();
+        });
+
+        console.log(formattedOrder);
         res.json(formattedOrder);
     } catch (error) {
         console.error(error);

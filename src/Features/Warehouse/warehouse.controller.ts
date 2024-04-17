@@ -112,41 +112,45 @@ export async function updateProductSku(req: Request, res: Response) {
 export async function createShipment(req: Request, res: Response) {
     try {
         const session = db.session();
-
-        const { warehouseId, productName, orderId, shipmentId } = req.body;
+        const { orderId } = req.params;
+        const {
+            shipmentDate,
+            estimatedDelivery,
+            trackingNumber,
+            status,
+            carrier,
+            shippingCost
+        } = req.body;
 
         const result = await session.run(
             `
-            MATCH (warehouse:Warehouse { name: $warehouseId })-[:STORES]->(product:Product { name: $productName })
-            WITH warehouse, product
-            MATCH (order:Order { order_id: $orderId })
-            WHERE product.quantity >= order.total_amount
-            WITH warehouse, product, order
-            CREATE (shipment:Shipment)
-            SET shipment.id = apoc.create.uuid(),
-                shipment.shipment_id = $shipmentId,
-                shipment.date = datetime(),
-                shipment.tracking_number = apoc.create.uuid()
-            CREATE (warehouse)-[:SHIPPED_VIA]->(shipment)-[:FULFILLS]->(order)
-            SET order.status = "SHIPPED",
-                product.quantity = product.quantity - order.total_amount
-            RETURN warehouse, product, shipment, order;
-            `,
-            { warehouseId, productName, orderId, shipmentId }
+        MATCH (o:Order {id: $orderId})
+        CREATE (s:Shipment {
+          shipmentId: apoc.create.uuid(),
+          date: $shipmentDate,
+          trackingNumber: $trackingNumber,
+          status: $status
+        })
+        CREATE (o)-[:SHIPPED_VIA {
+          carrier: $carrier,
+          shippingCost: $shippingCost,
+          estimatedDelivery: $estimatedDelivery
+        }]->(s)
+        RETURN s
+        `,
+            {
+                orderId,
+                shipmentDate,
+                estimatedDelivery,
+                trackingNumber,
+                status,
+                carrier,
+                shippingCost
+            }
         );
 
-        const formattedResult = result.records.map(record => {
-            return {
-                warehouse: record.get("warehouse").properties,
-                product: record.get("product").properties,
-                shipment: record.get("shipment").properties,
-                order: record.get("order").properties
-            };
-        });
-
-        console.log(formattedResult);
-
-        res.json(formattedResult);
+        const createdShipment = result.records[0].get("s").properties;
+        res.status(201).json(createdShipment);
     } catch (error) {
         console.error(error);
         res.status(500).send();

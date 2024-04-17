@@ -148,7 +148,6 @@ export async function deleteProduct(req: Request, res: Response) {
     try {
         const session = db.session();
         const { productId } = req.params;
-        console.log("PRODCUT ID", productId);
 
         const result = await session.run(
             `

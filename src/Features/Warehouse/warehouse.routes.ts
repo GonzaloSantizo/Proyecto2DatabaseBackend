@@ -6,7 +6,7 @@ router.get("/", WarehouseController.getWarehouses);
 
 router.get("/products", WarehouseController.getProducts); // different from the products a retail business would see
 
-router.post("/shipment", WarehouseController.createShipment);
+router.post("/orders/:orderId/shipments", WarehouseController.createShipment); // create shipment
 
 router.get("/orders", WarehouseController.getOrdersByWarehouse); // get orders by warehouse
 
