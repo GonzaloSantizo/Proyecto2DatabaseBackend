@@ -30,8 +30,9 @@ export async function getProducts(req: Request, res: Response) {
 export async function createProduct(req: Request, res: Response) {
     try {
         const session = db.session();
-        const { id, name, price, sku, manufacturer } = req.body;
+        const { id, name, price, sku, manufacturer, warehouseId, initialStock } = req.body;
 
+        // Crear el producto y relacionarlo con el fabricante
         const result = await session.run(
             `
             CREATE (p:Product {id: $id, name: $name, price: $price, sku: $sku})
@@ -44,6 +45,16 @@ export async function createProduct(req: Request, res: Response) {
         );
 
         const createdProduct = result.records[0].get("p").properties;
+
+        // Incrementar el stock en el almacén específico
+        await session.run(
+            `
+            MATCH (w:Warehouse {id: $warehouseId})
+            SET w.stock = w.stock + $initialStock
+            RETURN w
+            `,
+            { warehouseId, initialStock }
+        );
 
         res.json(createdProduct);
     } catch (error) {
