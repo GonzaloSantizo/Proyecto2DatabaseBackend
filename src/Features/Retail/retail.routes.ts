@@ -10,7 +10,7 @@ router.get("/products", RetailController.getProducts);
 
 router.get("/products/:productId", RetailController.getProductById);
 
-router.get("/:retailerId/orders/:orderId", RetailController.getOrderById);
+router.get("/orders/:orderId", RetailController.getOrderById);
 
 router.get("/:retailerId/orders", RetailController.getOrders);
 

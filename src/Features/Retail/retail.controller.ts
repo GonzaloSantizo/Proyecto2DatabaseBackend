@@ -268,43 +268,44 @@ export async function getOrderById(req: Request, res: Response) {
     try {
         const session = db.session();
         const orderId = req.params.orderId;
-
+        // apoc.date.format(p.order_date.epochMillis, 'ms', 'yyyy-MM-dd HH:mm:ss')
         const result = await session.run(
             `
-            MATCH (o:Order {id: $orderId})
-            OPTIONAL MATCH (o)-[:INCLUDES]-(p:Product)
-            OPTIONAL MATCH (o)-[:SHIPPED_VIA]->(s:Shipment)
-            RETURN o.id as id, o.status as status, o.total as total, p, p.quantity as quantity,
-                   s.shipment_id as shipmentId, s.date as shipmentDate, s.tracking_number as trackingNumber
-            `,
+        MATCH (o:Order {id: $orderId})
+        OPTIONAL MATCH (o)-[:CONTAINS]->(p:Product)
+        OPTIONAL MATCH (o)-[:SHIPPED_VIA]->(s:Shipment)
+        OPTIONAL MATCH (o)-[:FULFILLED_BY]->(w:Warehouse)
+        RETURN o.id as id, o.status as status, o.total as total, p, p.quantity as quantity, COLLECT(DISTINCT {
+          shipmentId: s.shipment_id,
+          shipmentDate:  apoc.date.format(s.date.epochMillis, 'ms', 'yyyy-MM-dd HH:mm:ss'),
+          trackingNumber: s.tracking_number,
+          carrier: s.carrier,
+          shippingCost: s.shipping_cost,
+          estimatedDelivery: s.estimated_delivery,
+          status: s.status
+        }) as shipments, COLLECT(DISTINCT w.name) as warehouses
+      `,
             { orderId }
         );
-
-        console.log(result.records);
 
         if (result.records.length === 0) {
             res.status(404).json({ error: "Order not found" });
             return;
         }
 
+        console.log(result.records[0].get("shipments"));
         const formattedOrder = {
             id: result.records[0].get("id"),
             status: result.records[0].get("status"),
             total: result.records[0].get("total"),
+            warehouses: result.records[0].get("warehouses"),
             products: result.records.map(record => {
                 return {
                     product: { ...record.get("p").properties },
                     quantity: record.get("quantity")
                 };
             }),
-            shipment: result.records[0].get("shipmentId")
-                ? {
-                      id: result.records[0].get("shipmentId"),
-                      shippedAt: result.records[0].get("shipmentDate"),
-                      trackingNumber: result.records[0].get("trackingNumber"),
-                      status: result.records[0].get("status")
-                  }
-                : null
+            shipments: result.records[0].get("shipments")
         };
 
         res.json(formattedOrder);
