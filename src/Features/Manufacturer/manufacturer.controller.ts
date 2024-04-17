@@ -8,14 +8,14 @@ export async function getProducts(req: Request, res: Response) {
 
         const products = await session.run(
             `
-            MATCH (manufacturer:Manufacturer {id: $manufacturerId})-[:PRODUCES]->(product)
-            RETURN product
+            MATCH (m:Manufacturer {id: $manufacturerId})-[:PRODUCES]->(p:Product)
+            RETURN p.name
             `,
             { manufacturerId }
         );
 
         const formattedProducts = products.records.map(record => {
-            return record.get("product").properties;
+            return record.get("p.name");
         });
 
         console.log(formattedProducts);
