@@ -170,6 +170,14 @@ export async function placeOrder(req: Request, res: Response) {
                 const unitPrice = productRecord.records[0].get("price");
                 const subtotal = unitPrice * quantity;
                 totalPrice += subtotal;
+                //DECREMENTAR
+                await tx.run(
+                    `
+                    MATCH (p:Product {id: $productId})-[:STORED_IN]->(w:Warehouse {id: $warehouseId})
+                    SET w.stock = w.stock - $quantity
+                    `,
+                    { warehouseId, productId, quantity }
+                );
 
                 await tx.run(
                     `
