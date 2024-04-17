@@ -101,3 +101,25 @@ export async function getSupplier(req: Request, res: Response) {
         res.status(500).send();
     }
 }
+
+export async function getManufacturers(req: Request, res: Response) {
+    try {
+        const session = db.session();
+
+        const manufacturers = await session.run(
+            `
+            MATCH (m:Manufacturer) 
+            RETURN m
+            `
+        );
+
+        const formattedManufacturers = manufacturers.records.map(record => {
+            return record.get("m").properties;
+        });
+
+        res.json(formattedManufacturers);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send();
+    }
+}
