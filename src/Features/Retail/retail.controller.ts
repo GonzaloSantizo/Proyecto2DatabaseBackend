@@ -29,53 +29,36 @@ export async function getProducts(req: Request, res: Response) {
         const warehouseId = req.query.warehouseId as string;
 
         let products;
-
         if (warehouseId) {
             products = await session.run(
                 `
           MATCH (w:Warehouse {id: $warehouseId})-[r:STORES]-(p:Product)
-          RETURN p, r.quantity as quantity, w.name as warehouse
+          RETURN p, r.quantity as quantity
           `,
                 { warehouseId }
             );
         } else {
             products = await session.run(
                 `
-          MATCH (w:Warehouse)-[r:STORES]-(p:Product)
-          RETURN p, r.quantity as quantity, w.name as warehouse
+          MATCH (p:Product)
+          RETURN p
           LIMIT 25
           `
             );
         }
 
-        const formattedProducts = products.records.reduce(
-            (acc: any, record) => {
-                const productId = record.get("p").properties.id;
-                const existingProduct = acc.find(
-                    product => product.id === productId
-                );
+        const formattedProducts = products.records.map(record => {
+            const product = record.get("p").properties;
+            const quantity = record.get("quantity") || null;
 
-                if (existingProduct) {
-                    existingProduct.warehouses.push({
-                        name: record.get("warehouse"),
-                        quantity: record.get("quantity")
-                    });
-                } else {
-                    acc.push({
-                        ...record.get("p").properties,
-                        warehouses: [
-                            {
-                                name: record.get("warehouse"),
-                                quantity: record.get("quantity")
-                            }
-                        ]
-                    });
+            return {
+                ...product,
+                quantity,
+                warehouse: {
+                    id: warehouseId
                 }
-
-                return acc;
-            },
-            []
-        );
+            };
+        });
 
         res.json(formattedProducts);
     } catch (error) {
@@ -88,34 +71,44 @@ export async function getProductById(req: Request, res: Response) {
     try {
         const session = db.session();
         const productId = req.params.productId;
+        const warehouseId = req.query.warehouseId as string;
+
+        console.log("hereeee", productId, warehouseId);
 
         const product = await session.run(
             `
-        MATCH (p:Product {id: $productId})<-[:STORES]-(w:Warehouse)
-        RETURN p, w, toFloat(w.capacity) as capacity
+        MATCH (p:Product {id: $productId})<-[r:STORES]-(w:Warehouse {id: $warehouseId})
+        RETURN p, r.quantity as quantity, w
         `,
-            { productId }
+            { productId, warehouseId }
         );
 
         if (product.records.length === 0) {
-            res.status(404).json({ error: "Product not found" });
+            res.status(404).json({
+                error: "Product not found in the specified warehouse"
+            });
             return;
         }
 
-        const productProperties = product.records[0].get("p").properties;
-        const warehouseProperties = product.records[0].get("w").properties;
+        console.log(product);
 
-        // Format the numeric values
+        const productProperties = product.records[0].get("p").properties;
+        const quantity = product.records[0].get("quantity").toInt();
+        const warehouseProperties = product.records[0].get("w").properties;
+        const capacity = warehouseProperties.capacity.toInt();
+
         const formattedProperties = {
             ...productProperties,
+            quantity,
             warehouse: {
                 ...warehouseProperties
             }
         };
 
-        // Replace the capacity value with the formatted value
-        formattedProperties.warehouse.capacity =
-            product.records[0].get("capacity");
+        //replace wwarehouse capacity with formatted capacity
+        formattedProperties.warehouse.capacity = capacity;
+
+        console.log(formattedProperties);
 
         res.json(formattedProperties);
     } catch (error) {

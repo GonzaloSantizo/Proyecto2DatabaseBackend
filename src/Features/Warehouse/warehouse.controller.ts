@@ -1,6 +1,35 @@
 import { Request, Response } from "express";
 import db from "../../Config/db";
 
+export async function getOrders(req: Request, res: Response) {
+    try {
+        const session = db.session();
+        const warehouseId = req.params.warehouseId;
+
+        const orders = await session.run(
+            `
+        MATCH (w:Warehouse {id: $warehouseId})<-[:FULFILLED_BY]-(o:Order)-[:PLACES]-(r:Retailer)
+        RETURN o.id as id, o.status as status, apoc.date.format(o.order_date.epochMillis, 'ms', 'yyyy-MM-dd HH:mm:ss') as placed_at, o.total as total, r.name as retailer
+        `,
+            { warehouseId }
+        );
+
+        const formattedOrders = orders.records.map(record => {
+            return {
+                id: record.get("id"),
+                status: record.get("status"),
+                placed_at: record.get("placed_at"),
+                total: record.get("total"),
+                retailer: record.get("retailer")
+            };
+        });
+
+        res.json(formattedOrders);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send();
+    }
+}
 export async function getWarehouses(req: Request, res: Response) {
     try {
         const session = db.session();
@@ -154,4 +183,3 @@ export async function getOrdersByWarehouse(req: Request, res: Response) {
         res.status(500).send();
     }
 }
-

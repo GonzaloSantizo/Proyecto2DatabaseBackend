@@ -5,21 +5,44 @@ export async function getProducts(req: Request, res: Response) {
     try {
         const session = db.session();
         const { manufacturerId } = req.params;
+        const { category, price, order } = req.query;
 
-        const products = await session.run(
-            `
-            MATCH (m:Manufacturer {id: $manufacturerId})-[:PRODUCES]->(p:Product)
-            RETURN p.name
-            `,
-            { manufacturerId }
-        );
+        let query = `
+        MATCH (manufacturer:Manufacturer {id: $manufacturerId})-[:PRODUCES]->(product)
+      `;
 
+        // Apply category filter if provided
+        if (category) {
+            query += `
+          WHERE product.category = $category
+        `;
+        }
+
+        // Apply price and order filters if provided
+        if (price === "low-to-high") {
+            query += `
+          ORDER BY product.price ASC
+        `;
+        } else if (price === "high-to-low") {
+            query += `
+          ORDER BY product.price DESC
+        `;
+        } else if (order) {
+            query += `
+          ORDER BY product.${order} ASC
+        `;
+        }
+
+        query += `
+        RETURN product
+      `;
+
+        const products = await session.run(query, { manufacturerId, category });
         const formattedProducts = products.records.map(record => {
             return record.get("p.name");
         });
 
         console.log(formattedProducts);
-
         res.json(formattedProducts);
     } catch (error) {
         console.error(error);
@@ -30,7 +53,15 @@ export async function getProducts(req: Request, res: Response) {
 export async function createProduct(req: Request, res: Response) {
     try {
         const session = db.session();
-        const { id, name, price, sku, manufacturer, warehouseId, initialStock } = req.body;
+        const {
+            id,
+            name,
+            price,
+            sku,
+            manufacturer,
+            warehouseId,
+            initialStock
+        } = req.body;
 
         // Crear el producto y relacionarlo con el fabricante
         const result = await session.run(
