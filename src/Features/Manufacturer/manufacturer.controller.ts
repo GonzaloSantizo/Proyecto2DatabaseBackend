@@ -4,20 +4,18 @@ import db from "../../Config/db";
 export async function getProducts(req: Request, res: Response) {
     try {
         const session = db.session();
+        const { manufacturerId } = req.params;
 
         const products = await session.run(
             `
-            MATCH (manufacturer:Manufacturer {id: "id_rarebeauty"})-[:PRODUCES]->(product)
+            MATCH (manufacturer:Manufacturer {id: $manufacturerId})-[:PRODUCES]->(product)
             RETURN product
-            `
+            `,
+            { manufacturerId }
         );
 
         const formattedProducts = products.records.map(record => {
-            return {
-                product: { ...record.get("p").properties },
-                quantity: record.get("quantity"),
-                warehouse: record.get("warehouse")
-            };
+            return record.get("product").properties;
         });
 
         console.log(formattedProducts);
@@ -84,7 +82,7 @@ export async function getSupplier(req: Request, res: Response) {
 
         const result = await session.run(
             `
-            MATCH (manufacturer:Manufacturer)<-[:SUPPLIES]-(supplier:Supplier)
+            MATCH (manufacturer:Manufacturer)-[:USES]->(supplier:Supplier)
             WHERE manufacturer.id = $manufacturerId
             RETURN supplier
             `,
