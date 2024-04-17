@@ -4,7 +4,12 @@ import db from "./Config/db";
 import retail from "./Features/Retail/retail.routes";
 import warehouse from "./Features/Warehouse/warehouse.routes";
 import manufacturer from "./Features/Manufacturer/manufacturer.routes";
+const cors = require("cors");
+const bodyParser = require("body-parser");
+
 const app = express();
+
+app.use(bodyParser.json());
 
 const port = 4000;
 
@@ -12,11 +17,13 @@ app.get("/", (req, res) => {
     res.send("Hello, TypeScript with Express!");
 });
 
-// allow cors from all origins
-app.use((req, res, next) => {
-    res.header("Access-Control-Allow-Origin", "*");
-    next();
-});
+app.use(
+    cors({
+        origin: "http://localhost:5173", // Update with your frontend URL
+        methods: ["GET", "POST", "PUT", "DELETE"], // Allowed HTTP methods
+        allowedHeaders: ["Content-Type"] // Allowed headers
+    })
+);
 
 app.use("/retail", retail);
 app.use("/warehouse", warehouse);

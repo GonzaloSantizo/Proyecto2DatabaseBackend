@@ -16,8 +16,6 @@ export async function getRetailers(req: Request, res: Response) {
             return record.get("r").properties;
         });
 
-        console.log(formattedRetailers);
-
         res.json(formattedRetailers);
     } catch (error) {
         console.error(error);
@@ -79,7 +77,6 @@ export async function getProducts(req: Request, res: Response) {
             []
         );
 
-        console.log(formattedProducts);
         res.json(formattedProducts);
     } catch (error) {
         console.error(error);
@@ -130,7 +127,9 @@ export async function getProductById(req: Request, res: Response) {
 export async function placeOrder(req: Request, res: Response) {
     try {
         const session = db.session();
-        const { retailerId, products } = req.body;
+        const { retailerId, products } = req.body.data;
+
+        console.log(req.body);
 
         const order = await session.writeTransaction(async tx => {
             const orderResult = await tx.run(
@@ -224,10 +223,9 @@ export async function getOrders(req: Request, res: Response) {
 
         const orders = await session.run(
             `
-            MATCH (r:Retailer {id: $retailerId})-[p:PLACES]-(o:Order)-[:FULFILLED_BY]-(w:Warehouse)
-            RETURN o.id as id, o.status as status, 
-            apoc.date.format(p.order_date.epochMillis, 'ms', 'yyyy-MM-dd HH:mm:ss') as placed_at, 
-            o.total as total, w.name as warehouse
+        MATCH (r:Retailer {id: $retailerId})-[p:PLACES]-(o:Order)-[:FULFILLED_BY]-(w:Warehouse)
+        RETURN o.id as id, o.status as status, apoc.date.format(p.order_date.epochMillis, 'ms', 'yyyy-MM-dd HH:mm:ss') as placed_at,
+               o.total as total, COLLECT(DISTINCT w.name) as warehouses
         `,
             { retailerId }
         );
@@ -238,11 +236,28 @@ export async function getOrders(req: Request, res: Response) {
                 status: record.get("status"),
                 placed_at: record.get("placed_at"),
                 total: record.get("total"),
-                warehouse: record.get("warehouse")
+                warehouses: record.get("warehouses")
             };
         });
 
-        res.json(formattedOrders);
+        const summarizedOrders = formattedOrders.reduce((acc: any, order) => {
+            const existingOrder = acc.find(o => o.id === order.id);
+
+            if (existingOrder) {
+                existingOrder.warehouses = [
+                    ...new Set([
+                        ...existingOrder.warehouses,
+                        ...order.warehouses
+                    ])
+                ];
+            } else {
+                acc.push(order);
+            }
+
+            return acc;
+        }, []);
+
+        res.json(summarizedOrders);
     } catch (error) {
         console.error(error);
         res.status(500).send();
@@ -257,13 +272,15 @@ export async function getOrderById(req: Request, res: Response) {
         const result = await session.run(
             `
             MATCH (o:Order {id: $orderId})
-            OPTIONAL MATCH (o)-[:CONTAINS]-(p:Product)
+            OPTIONAL MATCH (o)-[:INCLUDES]-(p:Product)
             OPTIONAL MATCH (o)-[:SHIPPED_VIA]->(s:Shipment)
             RETURN o.id as id, o.status as status, o.total as total, p, p.quantity as quantity,
-                   s.shipment_id as shipmentId, apoc.date.format(s.date.epochMillis, 'ms', 'yyyy-MM-dd') as shipmentDate, s.tracking_number as trackingNumber
+                   s.shipment_id as shipmentId, s.date as shipmentDate, s.tracking_number as trackingNumber
             `,
             { orderId }
         );
+
+        console.log(result.records);
 
         if (result.records.length === 0) {
             res.status(404).json({ error: "Order not found" });
