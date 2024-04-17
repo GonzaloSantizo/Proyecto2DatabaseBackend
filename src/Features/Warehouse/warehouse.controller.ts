@@ -154,3 +154,4 @@ export async function getOrdersByWarehouse(req: Request, res: Response) {
         res.status(500).send();
     }
 }
+
