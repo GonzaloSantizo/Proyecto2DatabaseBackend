@@ -117,7 +117,7 @@ export async function createShipment(req: Request, res: Response) {
 
         const result = await session.run(
             `
-            MATCH (warehouse:Warehouse { id: $warehouseId })-[:STORES]->(product:Product { name: $productName })
+            MATCH (warehouse:Warehouse { name: $warehouseId })-[:STORES]->(product:Product { name: $productName })
             WITH warehouse, product
             MATCH (order:Order { order_id: $orderId })
             WHERE product.quantity >= order.total_amount

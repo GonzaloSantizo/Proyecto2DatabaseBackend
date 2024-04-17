@@ -10,6 +10,8 @@ router.post("/shipment", WarehouseController.createShipment);
 
 router.get("/orders", WarehouseController.getOrdersByWarehouse); // get orders by warehouse
 
+router.get("/orders/:orderId", WarehouseController.getOrders);
+
 //router.put("/orders/:id", WarehouseController.updateOrder); // mark an order as shipped
 
 export default router;
