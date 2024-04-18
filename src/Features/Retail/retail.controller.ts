@@ -276,15 +276,15 @@ export async function getOrderById(req: Request, res: Response) {
             `
         MATCH (o:Order {id: $orderId})
         OPTIONAL MATCH (o)-[:CONTAINS]->(p:Product)
-        OPTIONAL MATCH (o)-[:SHIPPED_VIA]->(s:Shipment)
+        OPTIONAL MATCH (o)-[sc:SHIPPED_VIA]->(s:Shipment)
         OPTIONAL MATCH (o)-[:FULFILLED_BY]->(w:Warehouse)
         RETURN o.id as id, o.status as status, o.total as total, p, p.quantity as quantity, COLLECT(DISTINCT {
           shipmentId: s.shipment_id,
-          shipmentDate:  apoc.date.format(s.date.epochMillis, 'ms', 'yyyy-MM-dd HH:mm:ss'),
-          trackingNumber: s.tracking_number,
-          carrier: s.carrier,
-          shippingCost: s.shipping_cost,
-          estimatedDelivery: s.estimated_delivery,
+          shipmentDate:   s.date,
+          trackingNumber: s.trackingNumber,
+          carrier: sc.carrier,
+          shippingCost: sc.shippingCost,
+          estimatedDelivery: sc.estimatedDelivery,
           status: s.status
         }) as shipments, COLLECT(DISTINCT w.name) as warehouses
       `,
@@ -296,7 +296,6 @@ export async function getOrderById(req: Request, res: Response) {
             return;
         }
 
-        console.log(result.records[0].get("shipments"));
         const formattedOrder = {
             id: result.records[0].get("id"),
             status: result.records[0].get("status"),
@@ -316,7 +315,7 @@ export async function getOrderById(req: Request, res: Response) {
             product.product.sku = product.product.sku.toString();
         });
 
-        console.log(formattedOrder);
+        console.log("FINAL ORDER", formattedOrder);
         res.json(formattedOrder);
     } catch (error) {
         console.error(error);

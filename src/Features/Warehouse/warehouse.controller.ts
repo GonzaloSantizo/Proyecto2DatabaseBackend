@@ -122,6 +122,8 @@ export async function createShipment(req: Request, res: Response) {
             shippingCost
         } = req.body;
 
+        console.log(req.body);
+
         const result = await session.run(
             `
         MATCH (o:Order {id: $orderId})
@@ -163,9 +165,9 @@ export async function getOrdersByWarehouse(req: Request, res: Response) {
 
         const orders = await session.run(
             `
-            MATCH (w:Warehouse {name: "Radiance Repository"})-[:FULFILLED_BY]-(o:Order)-[:PLACES]-(r:Retailer)
-            RETURN o.id as id, o.status as status, apoc.date.format(o.order_date.epochMillis, 'ms', 'yyyy-MM-dd HH:mm:ss') as placed_at,
-                   o.total as total, COLLECT(DISTINCT r.name) as retailers
+            MATCH (w:Warehouse)-[:FULFILLED_BY]-(o:Order)-[:PLACES]-(r:Retailer)
+            RETURN o.id as id, o.status as status, apoc.date.format(o.createdAt.epochMillis, 'ms', 'yyyy-MM-dd HH:mm:ss') as placed_at,
+                   o.total as total, COLLECT(DISTINCT r.name) as retailers, w.name as warehouse
             `
         );
 
@@ -175,7 +177,8 @@ export async function getOrdersByWarehouse(req: Request, res: Response) {
                 status: record.get("status"),
                 placed_at: record.get("placed_at"),
                 total: record.get("total"),
-                retailers: record.get("retailers")
+                retailers: record.get("retailers"),
+                warehouse: record.get("warehouse")
             };
         });
 
