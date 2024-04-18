@@ -332,7 +332,7 @@ export async function receiveOrder(req: Request, res: Response) {
             `
         MATCH (o:Order {id: $orderId})-[:SHIPPED_VIA]->(s:Shipment)
         SET o.status = 'RECEIVED', s.status = 'DELIVERED'
-        RETURN o.id as orderId, o.status as orderStatus, s.shipment_id as shipmentId, s.status as shipmentStatus
+        RETURN o.id as orderId, o.status as orderStatus, s.shipmentId as shipmentId, s.status as shipmentStatus
         `,
             { orderId }
         );

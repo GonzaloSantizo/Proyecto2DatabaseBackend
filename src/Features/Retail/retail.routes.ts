@@ -16,6 +16,6 @@ router.get("/:retailerId/orders", RetailController.getOrders);
 
 router.post("/orders", RetailController.placeOrder);
 
-router.patch("/orders/:orderId/receive", RetailController.receiveOrder);
+router.post("/orders/:orderId/receive", RetailController.receiveOrder);
 
 export default router;
