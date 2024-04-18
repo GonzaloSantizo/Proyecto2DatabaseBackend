@@ -18,7 +18,10 @@ export async function getProducts(req: Request, res: Response) {
             return record.get("product").properties;
         });
 
-        console.log(formattedProducts);
+        // for each sku property replace it by converting to string
+        formattedProducts.forEach(product => {
+            product.sku = product.sku.toString();
+        });
 
         res.json(formattedProducts);
     } catch (error) {
@@ -81,6 +84,11 @@ export async function getFilteredProducts(req: Request, res: Response) {
         const products = await session.run(query, params);
         const formattedProducts = products.records.map(record => {
             return record.get("product").properties;
+        });
+
+        // for each sku property replace it by converting to string
+        formattedProducts.forEach(product => {
+            product.sku = product.sku.toString();
         });
 
         res.json(formattedProducts);
