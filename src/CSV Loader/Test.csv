@@ -1,2 +1,17 @@
-﻿elementId, id, name, sku, image_url, price
-123412, 90, Proof , 1123aa, , 57.81859080019379
+node_type,id,name,location,capacity,certifications,website,phone_number,store_type,cost,type,production_capacity,factory_location
+Warehouse,23,"Warehouse X","City X",50000,"Green Storage Certification,High-Value Inventory Certification,Climate-Control Features",,,,,,
+Warehouse,32,"Glamour Depot","New York",60000,"Cosmetic Good Manufacturing Practices,Cruelty-Free Makeup Certification,Eco-Friendly Packaging",,,,,,
+Order,12,,,,,,,,,,,,
+Order,120,,,,,,,,,,,,
+Retailer,24,,"beautystore.com",,,Specialty,,,,,
+Retailer,106,,"makeuphhaven.com","(444) 444-4444",Makeup,,,,,
+Ingredient,16,,,,,,5.0,Organic,,,
+Ingredient,17,,,,,,3.5,Synthetic,,,
+Supplier,2,,"Pigment Supplier","123456789",,,,,,,
+Supplier,15,,"Packaging Supplier","987654321",,,,,,,
+Shipment,0,,,,"2023-05-05","TR001","SHP001",,,,,
+Shipment,1,,,,"2023-05-08","TR002","SHP002",,,,,
+Product,3,,"fawfasfsaef",,,,2144,"https://people.com/thmb/Dzsw55zMVMfrzh6cnLDVPgPSiTM=/1500x0/filters:no_upscale():max_bytes(200000):strip_icc()/PSW_BeautyProducts_Tout-c00b74381b074bb69207fcbf7d5c524c.jpg","124asdasd","42424e",
+Product,4,,"nombre",,,,99,"https://people.com/thmb/Dzsw55zMVMfrzh6cnLDVPgPSiTM=/1500x0/filters:no_upscale():max_bytes(200000):strip_icc()/PSW_BeautyProducts_Tout-c00b74381b074bb69207fcbf7d5c524c.jpg","SKU",
+Manufacturer,7,,"Kylie","Los Angeles",15000,,,,,,,
+Manufacturer,8,,"Yuya","Mexico City",8000,,,,,,,
